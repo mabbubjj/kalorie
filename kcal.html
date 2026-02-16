@@ -2,6 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kalorie</title>
 
@@ -50,7 +51,8 @@ input, button {
 
 <div class="section">
 <h3>Přidat jídlo</h3>
-
+<button onclick="scanBarcode()">📷 Naskenovat čárový kód</button>
+<input type="file" id="barcodeInput" accept="image/*" capture="environment" style="display:none">
 <input list="foods" id="foodName" placeholder="Začni psát jídlo...">
 <datalist id="foods"></datalist>
 
@@ -229,9 +231,33 @@ function renderHistory(){
 
 startApp();
     setTimeout(updateTotal, 200);
+function scanBarcode(){
+    document.getElementById('barcodeInput').click();
+}
 
+document.getElementById('barcodeInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+
+    const codeReader = new ZXing.BrowserBarcodeReader();
+
+    codeReader.decodeFromImage(img)
+        .then(result => {
+            document.getElementById("foodName").value = "Produkt " + result.text;
+            alert("Načtený kód: " + result.text);
+        })
+        .catch(err => {
+            alert("Kód se nepodařilo přečíst. Zkus lepší světlo.");
+        });
+});
+
+    
 </script>
 
 </body>
 </html>
+
 
