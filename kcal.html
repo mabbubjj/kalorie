@@ -75,30 +75,48 @@ function createSections() {
 
 function searchFood() {
     let q = document.getElementById("search").value;
+    let results = document.getElementById("results");
+
+    results.innerHTML = "Hledám...";
 
     fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1`)
     .then(res => res.json())
     .then(data => {
-        let results = document.getElementById("results");
         results.innerHTML = "";
 
-        data.products.slice(0,10).forEach(p => {
-            if(!p.nutriments) return;
+        if (!data.products || data.products.length === 0) {
+            results.innerHTML = "Nic nenalezeno";
+            return;
+        }
 
-            let kcal = p.nutriments["energy-kcal_100g"];
-            if(!kcal) return;
+        data.products.slice(0,15).forEach(p => {
+            let kcal = p?.nutriments?.["energy-kcal_100g"];
+            let name = p.product_name;
+
+            if (!kcal || !name) return;
 
             let div = document.createElement("div");
             div.className = "result";
-            div.innerText = `${p.product_name || "Neznámý produkt"} (${kcal} kcal / 100g)`;
+            div.innerText = `${name} (${kcal} kcal / 100g)`;
 
             div.onclick = () => {
                 document.getElementById("kcal100").value = kcal;
+                document.getElementById("search").value = name;
             };
 
             results.appendChild(div);
         });
+
+        if (results.innerHTML === "") {
+            results.innerHTML = "Našel jsem produkty, ale bez kcal údajů.";
+        }
+    })
+    .catch(err => {
+        results.innerHTML = "Chyba při načítání databáze.";
+        console.error(err);
     });
 }
 
+
 function addFo
+
