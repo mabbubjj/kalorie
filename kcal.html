@@ -79,7 +79,7 @@ function searchFood() {
 
     results.innerHTML = "Hledám...";
 
-    fetch(`https://world.openfoodfacts.org/api/v2/search?categories_tags_en=${q}&fields=product_name,nutriments&limit=20`)
+    fetch(`https://corsproxy.io/?https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1`)
     .then(res => res.json())
     .then(data => {
         results.innerHTML = "";
@@ -119,6 +119,7 @@ function searchFood() {
 
 
 function addFo
+
 
 
 
