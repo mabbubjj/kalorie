@@ -14,21 +14,16 @@ body {
 
 .section {
     background: white;
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 15px;
-    border-radius: 10px;
+    border-radius: 12px;
 }
 
 input, button {
     width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-}
-
-.result {
-    padding: 6px;
-    border-bottom: 1px solid #ddd;
-    cursor: pointer;
+    padding: 10px;
+    margin-top: 6px;
+    font-size: 16px;
 }
 </style>
 </head>
@@ -38,13 +33,13 @@ input, button {
 <h1>🍽️ Kalorie</h1>
 
 <div class="section">
-<h3>🔎 Hledat potravinu</h3>
-<input id="search" placeholder="Např. milka, šunka, pasta">
-<button onclick="searchFood()">Hledat v databázi</button>
-    <div id="results"></div>
+<h3>Přidat jídlo</h3>
+
+<input list="foods" id="foodName" placeholder="Začni psát jídlo...">
+<datalist id="foods"></datalist>
 
 <input type="number" id="grams" placeholder="Gramáž (např. 150)">
-<input type="number" id="kcal100" placeholder="kcal na 100 g">
+<input type="number" id="kcal100" placeholder="kcal na 100 g (doplní se automaticky)">
 
 </div>
 
@@ -54,73 +49,112 @@ input, button {
 let sections = ["Snídaně", "Svačina", "Oběd", "Svačina 2", "Večeře"];
 let today = new Date().toISOString().split('T')[0];
 
-function getKey(section) {
+let foodDB = {
+"rohlík":265,
+"chléb bílý":240,
+"chléb celozrnný":220,
+"houska":270,
+"toastový chléb":260,
+"bageta":270,
+
+"kuřecí prsa":165,
+"kuřecí řízek":250,
+"vepřové maso":290,
+"hovězí maso":250,
+"šunka":120,
+"slanina":500,
+
+"rýže vařená":130,
+"těstoviny vařené":155,
+"brambory vařené":90,
+"hranolky":310,
+
+"mléko polotučné":50,
+"jogurt bílý":60,
+"jogurt ovocný":95,
+"tvaroh":120,
+"sýr eidam":300,
+"sýr tvrdý":350,
+
+"banán":105,
+"jablko":52,
+"pomeranč":47,
+
+"vejce":155,
+
+"protein":400,
+"proteinová tyčinka":380
+};
+
+let datalist = document.getElementById("foods");
+Object.keys(foodDB).forEach(food => {
+    let option = document.createElement("option");
+    option.value = food;
+    datalist.appendChild(option);
+});
+
+document.getElementById("foodName").addEventListener("input", function() {
+    let name = this.value.toLowerCase();
+    if(foodDB[name]) {
+        document.getElementById("kcal100").value = foodDB[name];
+    }
+});
+
+function getKey(section){
     return today + "_" + section;
 }
 
-function createSections() {
+function createSections(){
     let container = document.getElementById("sections");
-    sections.forEach(sec => {
-        let div = document.createElement("div");
-        div.className = "section";
-        div.innerHTML = `
-            <h3>${sec}</h3>
-            <button onclick="addFood('${sec}')">Přidat vybranou potravinu</button>
-            <ul id="list-${sec}"></ul>
+    sections.forEach(sec=>{
+        let div=document.createElement("div");
+        div.className="section";
+        div.innerHTML=`
+        <h3>${sec}</h3>
+        <button onclick="addFood('${sec}')">Přidat jídlo</button>
+        <ul id="list-${sec}"></ul>
         `;
         container.appendChild(div);
         loadSection(sec);
     });
 }
 
-function searchFood() {
-    let q = document.getElementById("search").value;
-    let results = document.getElementById("results");
+function addFood(section){
+    let name=document.getElementById("foodName").value;
+    let grams=document.getElementById("grams").value;
+    let kcal100=document.getElementById("kcal100").value;
 
-    results.innerHTML = "Hledám...";
+    if(!name||!grams||!kcal100) return;
 
-    fetch(`https://corsproxy.io/?https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1`)
-    .then(res => res.json())
-    .then(data => {
-        results.innerHTML = "";
+    let kcal=Math.round((grams/100)*kcal100);
 
-        if (!data.products || data.products.length === 0) {
-            results.innerHTML = "Nic nenalezeno";
-            return;
-        }
+    let key=getKey(section);
+    let data=JSON.parse(localStorage.getItem(key)||"[]");
 
-        data.products.forEach(p => {
-            let kcal = p?.nutriments?.["energy-kcal_100g"];
-            let name = p.product_name;
+    data.push({
+        name:name,
+        grams:grams,
+        kcal:kcal
+    });
 
-            if (!kcal || !name) return;
+    localStorage.setItem(key,JSON.stringify(data));
+    loadSection(section);
+}
 
-            let div = document.createElement("div");
-            div.className = "result";
-            div.innerText = `${name} (${kcal} kcal / 100g)`;
+function loadSection(section){
+    let list=document.getElementById("list-"+section);
+    list.innerHTML="";
 
-            div.onclick = () => {
-                document.getElementById("kcal100").value = kcal;
-                document.getElementById("search").value = name;
-            };
-
-            results.appendChild(div);
-        });
-
-        if (results.innerHTML === "") {
-            results.innerHTML = "Našel jsem produkty, ale bez kcal údajů.";
-        }
-    })
-    .catch(err => {
-        results.innerHTML = "Chyba při načítání databáze.";
-        console.error(err);
+    let data=JSON.parse(localStorage.getItem(getKey(section))||[]);
+    data.forEach(item=>{
+        let li=document.createElement("li");
+        li.innerText=`${item.name} ${item.grams} g – ${item.kcal} kcal`;
+        list.appendChild(li);
     });
 }
 
+createSections();
+</script>
 
-function addFo
-
-
-
-
-
+</body>
+</html>
