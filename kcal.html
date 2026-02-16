@@ -35,7 +35,18 @@ input, button {
 <body>
 
 <h1>🍽️ Kalorie</h1>
+
+<div id="limitSetup" class="section">
+<h3>Nastav denní limit kcal</h3>
+<input type="number" id="limitInput" placeholder="Např. 2200">
+<button onclick="saveLimit()">Uložit</button>
+</div>
+
+<div id="main" style="display:none">
+
+<h2>Limit: <span id="limit"></span> kcal</h2>
 <h2>Snědeno: <span id="total">0</span> kcal</h2>
+<h2>Zbývá: <span id="left">0</span> kcal</h2>
 
 <div class="section">
 <h3>Přidat jídlo</h3>
@@ -53,10 +64,16 @@ input, button {
 </div>
 
 <input type="number" id="kcal100" placeholder="kcal na 100 g">
-
 </div>
 
 <div id="sections"></div>
+
+<div class="section">
+<h3>📅 Historie</h3>
+<div id="history"></div>
+</div>
+
+</div>
 
 <script>
 let sections=["Snídaně","Svačina","Oběd","Svačina 2","Večeře"];
@@ -88,8 +105,28 @@ function setGrams(g){
  document.getElementById("grams").value=g;
 }
 
-function getKey(section){
- return today+"_"+section;
+function saveLimit(){
+ let limit=document.getElementById("limitInput").value;
+ localStorage.setItem("limit",limit);
+ startApp();
+}
+
+function startApp(){
+ let limit=localStorage.getItem("limit");
+ if(!limit)return;
+
+ document.getElementById("limitSetup").style.display="none";
+ document.getElementById("main").style.display="block";
+
+ document.getElementById("limit").innerText=limit;
+
+ createSections();
+ updateTotal();
+ renderHistory();
+}
+
+function getKey(section,date=today){
+ return date+"_"+section;
 }
 
 function createSections(){
@@ -123,6 +160,7 @@ function addFood(section){
 
  loadSection(section);
  updateTotal();
+ renderHistory();
 }
 
 function loadSection(section){
@@ -145,6 +183,7 @@ function removeItem(section,index){
  localStorage.setItem(key,JSON.stringify(data));
  loadSection(section);
  updateTotal();
+ renderHistory();
 }
 
 function updateTotal(){
@@ -153,11 +192,42 @@ function updateTotal(){
   let data=JSON.parse(localStorage.getItem(getKey(sec))||[]);
   data.forEach(item=>total+=item.kcal);
  });
+
+ let limit=Number(localStorage.getItem("limit"));
  document.getElementById("total").innerText=total;
+ document.getElementById("left").innerText=limit-total;
 }
 
-createSections();
-updateTotal();
+function renderHistory(){
+ let div=document.getElementById("history");
+ div.innerHTML="";
+
+ let dates=new Set();
+
+ Object.keys(localStorage).forEach(key=>{
+  sections.forEach(sec=>{
+   if(key.includes("_"+sec)){
+    dates.add(key.split("_")[0]);
+   }
+  });
+ });
+
+ let limit=Number(localStorage.getItem("limit"));
+
+ [...dates].sort().reverse().forEach(date=>{
+  let total=0;
+  sections.forEach(sec=>{
+   let data=JSON.parse(localStorage.getItem(getKey(sec,date))||[]);
+   data.forEach(item=>total+=item.kcal);
+  });
+
+  let row=document.createElement("div");
+  row.innerText=`${date} — ${total} kcal`;
+  div.appendChild(row);
+ });
+}
+
+startApp();
 </script>
 
 </body>
