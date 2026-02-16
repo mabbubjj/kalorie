@@ -25,12 +25,17 @@ input, button {
     margin-top: 6px;
     font-size: 16px;
 }
+
+.quick button{
+    width:24%;
+}
 </style>
 </head>
 
 <body>
 
 <h1>🍽️ Kalorie</h1>
+<h2>Snědeno: <span id="total">0</span> kcal</h2>
 
 <div class="section">
 <h3>Přidat jídlo</h3>
@@ -38,122 +43,121 @@ input, button {
 <input list="foods" id="foodName" placeholder="Začni psát jídlo...">
 <datalist id="foods"></datalist>
 
-<input type="number" id="grams" placeholder="Gramáž (např. 150)">
-<input type="number" id="kcal100" placeholder="kcal na 100 g (doplní se automaticky)">
+<input type="number" id="grams" placeholder="Gramáž">
+
+<div class="quick">
+<button onclick="setGrams(50)">50 g</button>
+<button onclick="setGrams(100)">100 g</button>
+<button onclick="setGrams(150)">150 g</button>
+<button onclick="setGrams(200)">200 g</button>
+</div>
+
+<input type="number" id="kcal100" placeholder="kcal na 100 g">
 
 </div>
 
 <div id="sections"></div>
 
 <script>
-let sections = ["Snídaně", "Svačina", "Oběd", "Svačina 2", "Večeře"];
-let today = new Date().toISOString().split('T')[0];
+let sections=["Snídaně","Svačina","Oběd","Svačina 2","Večeře"];
+let today=new Date().toISOString().split('T')[0];
 
-let foodDB = {
-"rohlík":265,
-"chléb bílý":240,
-"chléb celozrnný":220,
-"houska":270,
-"toastový chléb":260,
-"bageta":270,
-
-"kuřecí prsa":165,
-"kuřecí řízek":250,
-"vepřové maso":290,
-"hovězí maso":250,
-"šunka":120,
-"slanina":500,
-
-"rýže vařená":130,
-"těstoviny vařené":155,
-"brambory vařené":90,
-"hranolky":310,
-
-"mléko polotučné":50,
-"jogurt bílý":60,
-"jogurt ovocný":95,
-"tvaroh":120,
-"sýr eidam":300,
-"sýr tvrdý":350,
-
-"banán":105,
-"jablko":52,
-"pomeranč":47,
-
-"vejce":155,
-
-"protein":400,
-"proteinová tyčinka":380
+let foodDB={
+"rohlík":265,"chléb bílý":240,"chléb celozrnný":220,"houska":270,"toastový chléb":260,
+"kuřecí prsa":165,"kuřecí řízek":250,"vepřové maso":290,"hovězí maso":250,"šunka":120,
+"rýže vařená":130,"těstoviny vařené":155,"brambory vařené":90,"hranolky":310,
+"mléko polotučné":50,"jogurt bílý":60,"jogurt ovocný":95,"tvaroh":120,"sýr eidam":300,
+"banán":105,"jablko":52,"vejce":155,"protein":400
 };
 
-let datalist = document.getElementById("foods");
-Object.keys(foodDB).forEach(food => {
-    let option = document.createElement("option");
-    option.value = food;
-    datalist.appendChild(option);
+let datalist=document.getElementById("foods");
+Object.keys(foodDB).forEach(food=>{
+ let o=document.createElement("option");
+ o.value=food;
+ datalist.appendChild(o);
 });
 
-document.getElementById("foodName").addEventListener("input", function() {
-    let name = this.value.toLowerCase();
-    if(foodDB[name]) {
-        document.getElementById("kcal100").value = foodDB[name];
-    }
+document.getElementById("foodName").addEventListener("input",function(){
+ let name=this.value.toLowerCase();
+ if(foodDB[name]){
+   document.getElementById("kcal100").value=foodDB[name];
+ }
 });
+
+function setGrams(g){
+ document.getElementById("grams").value=g;
+}
 
 function getKey(section){
-    return today + "_" + section;
+ return today+"_"+section;
 }
 
 function createSections(){
-    let container = document.getElementById("sections");
-    sections.forEach(sec=>{
-        let div=document.createElement("div");
-        div.className="section";
-        div.innerHTML=`
-        <h3>${sec}</h3>
-        <button onclick="addFood('${sec}')">Přidat jídlo</button>
-        <ul id="list-${sec}"></ul>
-        `;
-        container.appendChild(div);
-        loadSection(sec);
-    });
+ let container=document.getElementById("sections");
+ sections.forEach(sec=>{
+  let div=document.createElement("div");
+  div.className="section";
+  div.innerHTML=`
+  <h3>${sec}</h3>
+  <button onclick="addFood('${sec}')">Přidat jídlo</button>
+  <ul id="list-${sec}"></ul>
+  `;
+  container.appendChild(div);
+  loadSection(sec);
+ });
 }
 
 function addFood(section){
-    let name=document.getElementById("foodName").value;
-    let grams=document.getElementById("grams").value;
-    let kcal100=document.getElementById("kcal100").value;
+ let name=document.getElementById("foodName").value;
+ let grams=document.getElementById("grams").value;
+ let kcal100=document.getElementById("kcal100").value;
+ if(!name||!grams||!kcal100)return;
 
-    if(!name||!grams||!kcal100) return;
+ let kcal=Math.round((grams/100)*kcal100);
 
-    let kcal=Math.round((grams/100)*kcal100);
+ let key=getKey(section);
+ let data=JSON.parse(localStorage.getItem(key)||"[]");
 
-    let key=getKey(section);
-    let data=JSON.parse(localStorage.getItem(key)||"[]");
+ data.push({name,grams,kcal});
+ localStorage.setItem(key,JSON.stringify(data));
 
-    data.push({
-        name:name,
-        grams:grams,
-        kcal:kcal
-    });
-
-    localStorage.setItem(key,JSON.stringify(data));
-    loadSection(section);
+ loadSection(section);
+ updateTotal();
 }
 
 function loadSection(section){
-    let list=document.getElementById("list-"+section);
-    list.innerHTML="";
+ let list=document.getElementById("list-"+section);
+ list.innerHTML="";
 
-    let data=JSON.parse(localStorage.getItem(getKey(section))||[]);
-    data.forEach(item=>{
-        let li=document.createElement("li");
-        li.innerText=`${item.name} ${item.grams} g – ${item.kcal} kcal`;
-        list.appendChild(li);
-    });
+ let data=JSON.parse(localStorage.getItem(getKey(section))||[]);
+ data.forEach((item,i)=>{
+  let li=document.createElement("li");
+  li.innerText=`${item.name} ${item.grams} g – ${item.kcal} kcal`;
+  li.onclick=()=>removeItem(section,i);
+  list.appendChild(li);
+ });
+}
+
+function removeItem(section,index){
+ let key=getKey(section);
+ let data=JSON.parse(localStorage.getItem(key)||"[]");
+ data.splice(index,1);
+ localStorage.setItem(key,JSON.stringify(data));
+ loadSection(section);
+ updateTotal();
+}
+
+function updateTotal(){
+ let total=0;
+ sections.forEach(sec=>{
+  let data=JSON.parse(localStorage.getItem(getKey(sec))||[]);
+  data.forEach(item=>total+=item.kcal);
+ });
+ document.getElementById("total").innerText=total;
 }
 
 createSections();
+updateTotal();
 </script>
 
 </body>
