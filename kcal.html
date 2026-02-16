@@ -246,9 +246,31 @@ document.getElementById('barcodeInput').addEventListener('change', function(e){
 
     codeReader.decodeFromImage(img)
         .then(result => {
-            document.getElementById("foodName").value = "Produkt " + result.text;
-            alert("Načtený kód: " + result.text);
+    const ean = result.text;
+
+    alert("Načtený kód: " + ean);
+
+    fetch("https://world.openfoodfacts.org/api/v0/product/" + ean + ".json")
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 1){
+                const product = data.product;
+
+                document.getElementById("foodName").value = product.product_name || "Neznámý produkt";
+
+                const kcal = product.nutriments?.["energy-kcal_100g"];
+                if(kcal){
+                    document.getElementById("kcal100").value = Math.round(kcal);
+                }
+            } else {
+                alert("Produkt nebyl v databázi nalezen.");
+            }
         })
+        .catch(() => {
+            alert("Nepodařilo se načíst produkt z databáze.");
+        });
+})
+
         .catch(err => {
             alert("Kód se nepodařilo přečíst. Zkus lepší světlo.");
         });
@@ -259,5 +281,6 @@ document.getElementById('barcodeInput').addEventListener('change', function(e){
 
 </body>
 </html>
+
 
 
