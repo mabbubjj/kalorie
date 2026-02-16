@@ -25,8 +25,8 @@ input, button {
     margin-top: 5px;
 }
 
-.history-item {
-    padding: 8px;
+.result {
+    padding: 6px;
     border-bottom: 1px solid #ddd;
     cursor: pointer;
 }
@@ -36,192 +36,69 @@ input, button {
 <body>
 
 <h1>🍽️ Kalorie</h1>
-<div id="date"></div>
 
-<div id="limitSetup" class="section">
-    <h2>Nastavení denního limitu</h2>
-    <input type="number" id="limitInput" placeholder="Např. 2200">
-    <button onclick="saveLimit()">Uložit</button>
+<div class="section">
+<h3>🔎 Hledat potravinu</h3>
+<input id="search" placeholder="Např. milka, šunka, pasta">
+<button onclick="searchFood()">Hledat v databázi</button>
+<div id="results"></div>
+
+<input type="number" id="grams" placeholder="Gramáž (např. 150)">
+<input type="number" id="kcal100" placeholder="kcal na 100 g">
+
 </div>
-
-<div id="app" style="display:none">
-
-<h3>Limit: <span id="limit"></span> kcal</h3>
-<h3>Snědeno: <span id="total">0</span> kcal</h3>
-<h3>Zbývá: <span id="left">0</span> kcal</h3>
-
-<button onclick="resetDay()">🔄 Nový den</button>
 
 <div id="sections"></div>
 
-<div class="section">
-    <h2>📅 Historie</h2>
-    <div id="history"></div>
-</div>
-
-</div>
-
 <script>
 let sections = ["Snídaně", "Svačina", "Oběd", "Svačina 2", "Večeře"];
-
-let foodDB = {
-    "rohlík": 190,
-    "chléb": 220,
-    "rýže": 130,
-    "kuřecí maso": 165,
-    "banán": 105,
-    "jablko": 80,
-    "vejce": 75,
-    "sýr": 110,
-    "těstoviny": 160,
-    "brambory": 90
-};
-
 let today = new Date().toISOString().split('T')[0];
 
-document.getElementById("date").innerText = "Dnes: " + today;
-
-function saveLimit() {
-    let limit = document.getElementById("limitInput").value;
-    localStorage.setItem("limit", limit);
-    startApp();
-}
-
-function startApp() {
-    let limit = localStorage.getItem("limit");
-    if (!limit) return;
-
-    document.getElementById("limitSetup").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    document.getElementById("limit").innerText = limit;
-
-    createSections();
-    updateTotals();
-    renderHistory();
-}
-
-function getKey(section, date=today) {
-    return date + "_" + section;
+function getKey(section) {
+    return today + "_" + section;
 }
 
 function createSections() {
     let container = document.getElementById("sections");
-    container.innerHTML = "";
-
     sections.forEach(sec => {
         let div = document.createElement("div");
         div.className = "section";
-
         div.innerHTML = `
             <h3>${sec}</h3>
-            <input list="foods" placeholder="Název jídla" id="name-${sec}">
-            <input type="number" placeholder="Kalorie" id="kcal-${sec}">
-            <button onclick="addFood('${sec}')">Přidat</button>
+            <button onclick="addFood('${sec}')">Přidat vybranou potravinu</button>
             <ul id="list-${sec}"></ul>
         `;
-
         container.appendChild(div);
         loadSection(sec);
     });
-
-    let datalist = document.createElement("datalist");
-    datalist.id = "foods";
-    datalist.innerHTML = Object.keys(foodDB)
-        .map(f => `<option value="${f}">`)
-        .join("");
-
-    document.body.appendChild(datalist);
 }
 
-function addFood(section) {
-    let name = document.getElementById("name-" + section).value.toLowerCase();
-    let kcalInput = document.getElementById("kcal-" + section);
+function searchFood() {
+    let q = document.getElementById("search").value;
 
-    let kcal = kcalInput.value;
-    if (!kcal && foodDB[name]) kcal = foodDB[name];
-    if (!kcal) return;
+    fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1`)
+    .then(res => res.json())
+    .then(data => {
+        let results = document.getElementById("results");
+        results.innerHTML = "";
 
-    let key = getKey(section);
-    let data = JSON.parse(localStorage.getItem(key) || "[]");
-    data.push({name, kcal});
-    localStorage.setItem(key, JSON.stringify(data));
+        data.products.slice(0,10).forEach(p => {
+            if(!p.nutriments) return;
 
-    loadSection(section);
-    updateTotals();
-    renderHistory();
-}
+            let kcal = p.nutriments["energy-kcal_100g"];
+            if(!kcal) return;
 
-function loadSection(section) {
-    let list = document.getElementById("list-" + section);
-    list.innerHTML = "";
+            let div = document.createElement("div");
+            div.className = "result";
+            div.innerText = `${p.product_name || "Neznámý produkt"} (${kcal} kcal / 100g)`;
 
-    let data = JSON.parse(localStorage.getItem(getKey(section)) || []);
+            div.onclick = () => {
+                document.getElementById("kcal100").value = kcal;
+            };
 
-    data.forEach(item => {
-        let li = document.createElement("li");
-        li.innerText = item.name + " - " + item.kcal + " kcal";
-        list.appendChild(li);
-    });
-}
-
-function updateTotals() {
-    let total = 0;
-
-    sections.forEach(sec => {
-        let data = JSON.parse(localStorage.getItem(getKey(sec)) || []);
-        data.forEach(item => total += Number(item.kcal));
-    });
-
-    let limit = Number(localStorage.getItem("limit"));
-
-    document.getElementById("total").innerText = total;
-    document.getElementById("left").innerText = limit - total;
-}
-
-function resetDay() {
-    sections.forEach(sec => {
-        localStorage.removeItem(getKey(sec));
-    });
-
-    createSections();
-    updateTotals();
-    renderHistory();
-}
-
-function renderHistory() {
-    let historyDiv = document.getElementById("history");
-    historyDiv.innerHTML = "";
-
-    let dates = new Set();
-
-    Object.keys(localStorage).forEach(key => {
-        sections.forEach(sec => {
-            if (key.includes("_" + sec)) {
-                dates.add(key.split("_")[0]);
-            }
+            results.appendChild(div);
         });
     });
-
-    let limit = Number(localStorage.getItem("limit"));
-
-    [...dates].sort().reverse().forEach(date => {
-        let total = 0;
-
-        sections.forEach(sec => {
-            let data = JSON.parse(localStorage.getItem(getKey(sec, date)) || []);
-            data.forEach(item => total += Number(item.kcal));
-        });
-
-        let div = document.createElement("div");
-        div.className = "history-item";
-        div.innerText = `${date} — ${total} kcal (zbývalo ${limit-total})`;
-
-        historyDiv.appendChild(div);
-    });
 }
 
-startApp();
-</script>
-
-</body>
-</html>
+function addFo
